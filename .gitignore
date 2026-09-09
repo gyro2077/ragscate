@@ -1,0 +1,29 @@
+# Instaladores y medios propietarios
+*.iso
+*.img
+*.msi
+*.exe
+
+# Respaldos locales y artefactos temporales
+backups/
+*.bak
+*.log
+*.tmp
+~$*
+
+# Configuracion local de agentes y editores
+.agents/
+.codex/
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Secretos y configuracion local
+.env
+.env.*
+!.env.example

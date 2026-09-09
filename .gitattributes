@@ -1,0 +1,11 @@
+# Las fuentes exportadas por PowerBuilder conservan CRLF para reimportacion.
+pb-src/*.sra text eol=crlf
+pb-src/*.srd text eol=crlf
+pb-src/*.srf text eol=crlf
+pb-src/*.srm text eol=crlf
+pb-src/*.srs text eol=crlf
+pb-src/*.sru text eol=crlf
+pb-src/*.srw text eol=crlf
+
+# Bibliotecas PowerBuilder son binarias.
+*.pbl binary

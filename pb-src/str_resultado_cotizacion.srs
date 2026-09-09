@@ -1,0 +1,23 @@
+$PBExportHeader$str_resultado_cotizacion.srs
+$PBExportComments$Resultado didactico del calculo de una cotizacion
+global type str_resultado_cotizacion from structure
+	boolean		es_valido
+	string		mensaje_error
+	integer		edad
+	string		categoria
+	decimal		porcentaje_descuento
+	decimal		prima_base
+	decimal		factor_edad
+	decimal		factor_categoria
+	decimal		prima_antes_descuento
+	decimal		valor_descuento
+	decimal		subtotal
+	decimal		impuesto
+	decimal		prima_anual
+	decimal		cuota_mensual
+	decimal		deducible
+	string		estado
+	string		motivos_autorizacion
+	string		explicacion
+end type
+

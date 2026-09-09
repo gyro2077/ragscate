@@ -1,0 +1,8 @@
+1. str_resultado_cotizacion.srs
+2. n_cotizador_reglas.sru
+3. d_tabla_primas_edad.srd
+4. w_cotizador_mvp.srw
+5. cotizador_mvp.sra (reemplaza solamente el Application object existente)
+
+Todos los archivos deben importarse en cotizador_mvp.pbl con PowerBuilder 9.0.3.
+No edite la PBL desde Linux.

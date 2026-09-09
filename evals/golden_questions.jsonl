@@ -1,0 +1,10 @@
+{"id":"prima_anual","question":"¿Donde se calcula la prima anual?","classification":"Comprobado","expected_members":["of_calcular_cotizacion"]}
+{"id":"flujo_calcular","question":"Explicame el flujo del boton Calcular.","classification":"Comprobado","expected_members":["cb_calcular.clicked","of_calcular","of_calcular_cotizacion"]}
+{"id":"validar_edad","question":"¿Que validaciones se aplican a la edad?","classification":"Comprobado","expected_members":["of_leer_entradas","of_factor_edad"]}
+{"id":"autorizar_70_alto","question":"¿Por que edad 70 y categoria Alto requieren autorizacion?","classification":"Comprobado","expected_members":["of_calcular_cotizacion"]}
+{"id":"cambiar_impuesto","question":"¿Donde cambiaria el impuesto?","classification":"Comprobado","expected_members":["of_calcular_cotizacion"]}
+{"id":"agregar_categoria","question":"¿Que funciones se afectan al agregar una categoria?","classification":"Comprobado","expected_members":["of_factor_categoria","open"]}
+{"id":"tabla_datawindow","question":"¿Que tabla consulta d_tabla_primas_edad?","classification":"Comprobado","expected_members":["d_tabla_primas_edad","of_actualizar_tabla"],"must_contain":"externa"}
+{"id":"cuota_mensual","question":"¿Como se calcula la cuota mensual?","classification":"Comprobado","expected_members":["of_calcular_cotizacion"]}
+{"id":"limpiar","question":"¿Que hace Limpiar?","classification":"Comprobado","expected_members":["of_limpiar"]}
+{"id":"simbolo_ausente","question":"¿Donde se valida numero_poliza?","classification":"No localizado","expected_members":[]}

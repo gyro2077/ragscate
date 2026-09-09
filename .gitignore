@@ -17,11 +17,14 @@ backups/
 .idea/
 .vscode/
 
-# Python
+# Python y datos generados por RAGscate
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+.coverage
+htmlcov/
+rag-data/
 
 # Secretos y configuracion local
 .env

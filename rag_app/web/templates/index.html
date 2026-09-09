@@ -8,14 +8,18 @@
 </head>
 <body>
   <main class="shell">
-    <header><p class="eyebrow">Asistente local para PowerBuilder legado</p><h1>RAG<span>scate</span></h1><p>Respuestas en español respaldadas por líneas reconstruibles del snapshot.</p></header>
+    <header>
+      <p class="eyebrow">Asistente local para PowerBuilder legado</p>
+      <div class="title-row"><h1>RAG<span>scate</span></h1><div id="llm-chip" class="runtime-chip">Comprobando Ollama…</div></div>
+      <p>Respuestas en español respaldadas por líneas reconstruibles del snapshot.</p>
+    </header>
     <form id="ask-form">
       <label for="question">Pregunta sobre el código</label>
       <div class="ask-row"><textarea id="question" rows="3" required placeholder="¿Dónde se calcula la prima anual?"></textarea><button type="submit">Consultar</button></div>
       <div class="meta"><label for="snapshot">Snapshot</label><select id="snapshot"></select><span id="status">Cargando índice…</span></div>
     </form>
     <section id="result" class="result hidden" aria-live="polite">
-      <div class="result-head"><span id="classification" class="badge"></span><strong id="answer"></strong></div>
+      <div class="result-head"><span id="classification" class="badge"></span><div><strong id="answer"></strong><p id="generation" class="generation"></p></div></div>
       <div id="flow-block"><h2>Flujo</h2><ol id="flow"></ol></div>
       <h2>Evidencia verificable</h2><div id="citations"></div>
       <div class="grid"><section><h2>Posibles lugares de cambio</h2><ul id="changes"></ul></section><section><h2>Riesgos</h2><ul id="risks"></ul></section><section><h2>Pruebas sugeridas</h2><ul id="tests"></ul></section></div>

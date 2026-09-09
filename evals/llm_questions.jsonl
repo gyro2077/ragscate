@@ -1,0 +1,30 @@
+{"id":"prima_anual","question":"¿Dónde se calcula la prima anual?","expected_members":["of_calcular_cotizacion"]}
+{"id":"prima_anual_p1","question":"Explícame de qué importes sale la prima anual.","expected_members":["of_calcular_cotizacion"]}
+{"id":"prima_anual_p2","question":"¿Cuál es la secuencia para obtener prima anual desde el subtotal?","expected_members":["of_calcular_cotizacion"]}
+{"id":"flujo_calcular","question":"Explícame el flujo del botón Calcular.","expected_members":["cb_calcular.clicked","of_calcular","of_calcular_cotizacion"]}
+{"id":"flujo_calcular_p1","question":"Describe el flujo completo que comienza al presionar Calcular.","expected_members":["cb_calcular.clicked","of_calcular","of_calcular_cotizacion"]}
+{"id":"flujo_calcular_p2","question":"¿Qué llamadas encadena el botón Calcular?","expected_members":["cb_calcular.clicked","of_calcular","of_calcular_cotizacion"]}
+{"id":"validar_edad","question":"¿Qué validaciones se aplican a la edad?","expected_members":["of_leer_entradas","of_factor_edad"]}
+{"id":"validar_edad_p1","question":"¿Cómo rechaza el programa una edad vacía, decimal o fuera de rango?","expected_members":["of_leer_entradas","of_factor_edad"]}
+{"id":"validar_edad_p2","question":"Detalla los controles realizados antes de aceptar la edad.","expected_members":["of_leer_entradas","of_factor_edad"]}
+{"id":"autorizar_70_alto","question":"¿Por qué edad 70 y categoría Alto requieren autorización?","expected_members":["of_calcular_cotizacion"]}
+{"id":"autorizar_70_alto_p1","question":"Explica el motivo de autorización para una persona de 70 años en categoría Alto.","expected_members":["of_calcular_cotizacion"]}
+{"id":"autorizar_70_alto_p2","question":"¿Qué condiciones se activan en el caso 70/Alto?","expected_members":["of_calcular_cotizacion"]}
+{"id":"cambiar_impuesto","question":"¿Dónde cambiaría el impuesto?","expected_members":["variables","of_calcular_cotizacion"]}
+{"id":"cambiar_impuesto_p1","question":"¿Qué regla y fórmula debo revisar para modificar el porcentaje de impuesto?","expected_members":["variables","of_calcular_cotizacion"]}
+{"id":"cambiar_impuesto_p2","question":"Si cambia el impuesto demostrativo, ¿qué lugares del código se ven afectados?","expected_members":["variables","of_calcular_cotizacion"]}
+{"id":"agregar_categoria","question":"¿Qué funciones se afectan al agregar una categoría?","expected_members":["of_factor_categoria","open"]}
+{"id":"agregar_categoria_p1","question":"¿Qué tendría que revisar para incorporar una categoría nueva?","expected_members":["of_factor_categoria","open"]}
+{"id":"agregar_categoria_p2","question":"Describe el impacto de añadir otra categoría seleccionable.","expected_members":["of_factor_categoria","open"]}
+{"id":"tabla_datawindow","question":"¿Qué tabla consulta d_tabla_primas_edad?","expected_members":["d_tabla_primas_edad","of_actualizar_tabla"],"must_contain_any":["externa","no consulta"]}
+{"id":"tabla_datawindow_p1","question":"¿Cuál es el origen de datos de d_tabla_primas_edad?","expected_members":["d_tabla_primas_edad","of_actualizar_tabla"],"must_contain_any":["externa","no consulta"]}
+{"id":"tabla_datawindow_p2","question":"Confirma si d_tabla_primas_edad ejecuta SELECT contra una tabla.","expected_members":["d_tabla_primas_edad","of_actualizar_tabla"],"must_contain_any":["externa","no consulta"]}
+{"id":"cuota_mensual","question":"¿Cómo se calcula la cuota mensual?","expected_members":["of_calcular_cotizacion"]}
+{"id":"cuota_mensual_p1","question":"Explica la fórmula utilizada para obtener el pago mensual.","expected_members":["of_calcular_cotizacion"]}
+{"id":"cuota_mensual_p2","question":"¿De qué valor sale cuota_mensual y cómo se redondea?","expected_members":["of_calcular_cotizacion"]}
+{"id":"limpiar","question":"¿Qué hace Limpiar?","expected_members":["of_limpiar"]}
+{"id":"limpiar_p1","question":"¿Qué campos y resultados reinicia el botón Limpiar?","expected_members":["of_limpiar"]}
+{"id":"limpiar_p2","question":"Describe el estado de la ventana después de ejecutar of_limpiar.","expected_members":["of_limpiar"]}
+{"id":"simbolo_ausente","question":"¿Dónde se valida numero_poliza?","classification":"No localizado","expected_members":[]}
+{"id":"simbolo_ausente_p1","question":"¿Qué función comprueba numero_poliza?","classification":"No localizado","expected_members":[]}
+{"id":"simbolo_ausente_p2","question":"Indica dónde modificar numero_poliza y qué pruebas ejecutar.","classification":"No localizado","expected_members":[]}

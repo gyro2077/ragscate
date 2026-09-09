@@ -93,12 +93,73 @@ un modelo local se configuran variables de entorno:
 RAG_LLM_PROVIDER=ollama
 RAG_LLM_MODEL=<modelo disponible localmente>
 RAG_LLM_BASE_URL=http://127.0.0.1:11434
+RAG_LLM_TIMEOUT_SECONDS=120
+RAG_LLM_NUM_CTX=4096
+RAG_LLM_MAX_TOKENS=500
+RAG_LLM_TEMPERATURE=0
+RAG_LLM_TOP_P=0.9
+RAG_LLM_KEEP_ALIVE=10m
+RAG_LLM_THINK=false
+RAG_LLM_JSON_RETRIES=1
 ```
+
+RAGscate no inicia Ollama ni descarga modelos. Antes de activarlo, compruebe el
+inventario local y use en `.env` un nombre que aparezca exactamente en la
+primera orden:
+
+```bash
+ollama list
+uv run ragscate llm-health
+```
+
+`llm-health` consulta el inventario de Ollama y diferencia endpoint inaccesible
+de modelo ausente. Cada generación usa JSON estructurado sin streaming y
+consume todos los parámetros anteriores. Timeout, JSON inválido, modelo ausente
+y respuestas no fundamentadas producen estados explícitos.
 
 También se admite `RAG_LLM_PROVIDER=openai-compatible`, con endpoint, modelo y,
 si hace falta, `RAG_LLM_API_KEY`. Ningún modelo instalado, token ni endpoint
 privado se codifica en la aplicación. El código y comentarios recuperados se
 tratan como datos no confiables, nunca como instrucciones.
+
+La frontera de confianza es deliberada:
+
+- las preguntas doradas tienen una composición determinista; Ollama recibe la
+  evidencia, pero no puede sustituir la fórmula, el flujo ni las ubicaciones
+  reconstruidas por el backend;
+- una pregunta relacionada que no coincide con un contrato determinista usa la
+  explicación local y queda como `Inferido`;
+- un identificador inexistente se resuelve como `No localizado` antes de llamar
+  al modelo;
+- solo se aceptan IDs `E1..En` entregados en esa solicitud; las citas se vuelven
+  a construir y validar desde el snapshot original;
+- la prosa generada nunca puede redactar líneas o rutas para convertirlas en
+  citas.
+
+### Evaluación local de modelos
+
+La comparación es secuencial y se niega a trabajar con un modelo no instalado;
+por tanto, el comando no implica una descarga:
+
+```bash
+uv run ragscate benchmark-llm \
+  --model "$RAG_LLM_MODEL" \
+  --repetitions 3 \
+  --report EVALUACION-LLM-LOCAL.md
+```
+
+La batería contiene las diez preguntas base, dos paráfrasis por cada una, tres
+consultas ausentes de `numero_poliza` y una prueba adicional de inyección dentro
+de código no confiable. Para depurar un caso concreto:
+
+```bash
+uv run ragscate benchmark-llm --model "$RAG_LLM_MODEL" \
+  --repetitions 1 --case-id validar_edad
+```
+
+El Markdown conserva hardware, snapshot, primera medida, promedio caliente,
+tokens/s, RAM, VRAM, `ollama ps` y resultado por ejecución. El detalle JSON se
+guarda en `rag-data/llm-benchmarks/` y se ignora en Git.
 
 ## Arquitectura y artefactos
 
@@ -110,7 +171,7 @@ rag_app/retrieval/        embeddings, BM25 y fusión RRF
 rag_app/generation/       abstención, proveedores y citas verificadas
 rag_app/api/              API FastAPI y contratos Pydantic
 rag_app/web/              interfaz HTML/CSS/JS sin framework pesado
-evals/                    diez preguntas doradas
+evals/                    preguntas doradas y batería LLM con paráfrasis
 tests/rag/                pruebas unitarias e integración
 rag-data/                 snapshots, SQLite y matrices; ignorado por Git
 ```
@@ -138,6 +199,8 @@ en [VALIDACION-PB9.md](VALIDACION-PB9.md).
 - [PLAN-IMPLEMENTACION-RAG.md](PLAN-IMPLEMENTACION-RAG.md): contratos y fases.
 - [MAPA-CODIGO-COTIZADOR.md](MAPA-CODIGO-COTIZADOR.md): mapa del corpus.
 - [VALIDACION-PB9.md](VALIDACION-PB9.md): evidencia de PowerBuilder.
+- [PLAN-IMPLEMENTACION-LLM-LOCAL.md](PLAN-IMPLEMENTACION-LLM-LOCAL.md): contrato Ollama.
+- [EVALUACION-LLM-LOCAL.md](EVALUACION-LLM-LOCAL.md): resultados del modelo autorizado.
 - [README-COTIZADOR-PB9.md](README-COTIZADOR-PB9.md): uso del cotizador.
 
 ## Limitaciones reales

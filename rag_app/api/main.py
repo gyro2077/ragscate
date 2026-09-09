@@ -24,11 +24,12 @@ from .schemas import AskRequest, AskResponse, SearchHitResponse, SearchRequest
 WEB_ROOT = Path(__file__).resolve().parents[1] / "web"
 
 
-def create_app(settings: Settings | None = None, encoder: SemanticEncoder | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, encoder: SemanticEncoder | None = None, llm=None) -> FastAPI:
     settings = settings or get_settings()
     app = FastAPI(title="RAGscate", version="0.1.0")
     app.state.settings = settings
     app.state.encoder = encoder
+    app.state.llm = llm
     templates = Jinja2Templates(directory=str(WEB_ROOT / "templates"))
     app.mount("/static", StaticFiles(directory=str(WEB_ROOT / "static")), name="static")
 
@@ -44,6 +45,11 @@ def create_app(settings: Settings | None = None, encoder: SemanticEncoder | None
         retriever = HybridRetriever(connection, settings.data_dir, active_encoder)
         return connection, snapshot, retriever
 
+    def llm_provider():
+        if app.state.llm is None:
+            app.state.llm = create_llm_provider(settings)
+        return app.state.llm
+
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request):
         return templates.TemplateResponse(request=request, name="index.html", context={"title": "RAGscate"})
@@ -55,7 +61,24 @@ def create_app(settings: Settings | None = None, encoder: SemanticEncoder | None
             snapshot = latest_snapshot_id(connection)
         finally:
             connection.close()
-        return {"status": "ok", "indexed": snapshot is not None, "snapshot_id": snapshot, "llm_provider": settings.llm_provider}
+        try:
+            provider_health = llm_provider().health().to_dict()
+        except ValueError as exc:
+            provider_health = {
+                "provider": settings.llm_provider,
+                "model": settings.llm_model,
+                "enabled": settings.llm_provider != "disabled",
+                "available": False,
+                "model_available": False,
+                "detail": str(exc),
+            }
+        return {
+            "status": "ok",
+            "indexed": snapshot is not None,
+            "snapshot_id": snapshot,
+            "llm_provider": settings.llm_provider,
+            "llm": provider_health,
+        }
 
     @app.get("/api/snapshots")
     def snapshots():
@@ -92,7 +115,7 @@ def create_app(settings: Settings | None = None, encoder: SemanticEncoder | None
             snapshot_id = payload.snapshot_id or latest
             service = AnswerService(
                 connection, retriever, CitationValidator(settings.root, connection),
-                create_llm_provider(settings), settings.max_context_chars,
+                llm_provider(), settings.max_context_chars, settings.llm_json_retries,
             )
             return AskResponse.model_validate(asdict(service.ask(snapshot_id, payload.question)))
         except CitationValidationError as exc:

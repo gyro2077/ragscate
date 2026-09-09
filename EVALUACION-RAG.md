@@ -1,7 +1,7 @@
 # Evaluación reproducible de RAGscate
 
-- Fecha UTC: `2026-09-09T03:14:43.299186+00:00`
-- Snapshot: `c3d4774ab08c-050cc40dd611`
+- Fecha UTC: `2026-09-09T05:19:55.637812+00:00`
+- Snapshot: `97efe07425e0-050cc40dd611`
 - Embeddings: `sentence-transformers` / `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
 - Casos aprobados: **10/10**
 - Localizaciones top 3: **9/9**

@@ -31,6 +31,19 @@ class CitationResponse(BaseModel):
     snapshot_id: str
 
 
+class GenerationInfoResponse(BaseModel):
+    provider: str
+    model: str
+    status: Literal["disabled", "not_invoked", "generated", "fallback", "rejected"]
+    detail: str
+    attempts: int
+    total_duration_ms: float | None
+    load_duration_ms: float | None
+    prompt_tokens: int | None
+    output_tokens: int | None
+    tokens_per_second: float | None
+
+
 class AskResponse(BaseModel):
     classification: Literal["Comprobado", "Inferido", "No localizado"]
     answer: str
@@ -39,6 +52,7 @@ class AskResponse(BaseModel):
     possible_change_locations: list[str]
     risks: list[str]
     recommended_tests: list[str]
+    generation: GenerationInfoResponse
 
     @model_validator(mode="after")
     def enforce_evidence_contract(self):

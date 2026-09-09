@@ -110,6 +110,20 @@ class Citation:
 
 
 @dataclass(frozen=True)
+class GenerationInfo:
+    provider: str
+    model: str
+    status: Literal["disabled", "not_invoked", "generated", "fallback", "rejected"]
+    detail: str
+    attempts: int = 0
+    total_duration_ms: float | None = None
+    load_duration_ms: float | None = None
+    prompt_tokens: int | None = None
+    output_tokens: int | None = None
+    tokens_per_second: float | None = None
+
+
+@dataclass(frozen=True)
 class Answer:
     classification: Literal["Comprobado", "Inferido", "No localizado"]
     answer: str
@@ -118,4 +132,9 @@ class Answer:
     possible_change_locations: list[str]
     risks: list[str]
     recommended_tests: list[str]
-
+    generation: GenerationInfo = field(default_factory=lambda: GenerationInfo(
+        provider="disabled",
+        model="",
+        status="disabled",
+        detail="Respuesta determinista; el LLM no fue invocado.",
+    ))

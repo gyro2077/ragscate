@@ -25,6 +25,7 @@ def test_health_home_search_and_ask(tmp_path):
     health = client.get("/api/health")
     assert health.status_code == 200
     assert health.json()["snapshot_id"] == indexed["snapshot_id"]
+    assert health.json()["llm"]["enabled"] is False
     rebuilt = client.post("/api/index")
     assert rebuilt.status_code == 200 and rebuilt.json()["source_count"] == 5
     home = client.get("/")

@@ -39,6 +39,10 @@ class GroundedLLMOutput(BaseModel):
 
     @model_validator(mode="after")
     def evidence_contract(self):
+        # Auto-correct if the model forgets to set evidence_sufficient=False when returning no citations
+        if not self.evidence_ids and self.evidence_sufficient:
+            self.evidence_sufficient = False
+            
         if self.evidence_sufficient and (not self.answer or not self.evidence_ids):
             raise ValueError("Una respuesta suficiente requiere texto e IDs de evidencia")
         return self

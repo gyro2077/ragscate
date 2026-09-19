@@ -455,6 +455,22 @@ class AnswerService:
             try:
                 result = self.llm.generate(UNIFIED_SYSTEM_PROMPT, user_prompt + retry_note, schema)
                 output = GroundedLLMOutput.model_validate_json(result.content)
+                
+                # If the LLM says the evidence doesn't answer the question, trust it
+                if not output.evidence_sufficient:
+                    generation = self._generation_info(
+                        "generated",
+                        "El modelo determinó que la evidencia no responde la pregunta.",
+                        attempt,
+                        result.metrics,
+                    )
+                    return Answer(
+                        "No localizado",
+                        output.answer if output.answer else "La pregunta no está relacionada con el código ni las reglas de negocio disponibles.",
+                        [], [], [], [], [],
+                        generation,
+                    )
+                
                 mapping = dict(all_evidence)
                 unknown = set(output.evidence_ids) - set(mapping)
                 if unknown:

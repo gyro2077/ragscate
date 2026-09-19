@@ -139,6 +139,7 @@ class Answer:
         status="disabled",
         detail="Respuesta determinista; el LLM no fue invocado.",
     ))
+    agent_prompt: str = ""
 
 
 DocType = Literal["policy", "guideline", "requirement", "draft", "unknown"]

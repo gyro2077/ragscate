@@ -16,9 +16,11 @@ class GroundedLLMOutput(BaseModel):
     possible_change_locations: list[str] = Field(default_factory=list, max_length=8)
     risks: list[str] = Field(default_factory=list, max_length=8)
     recommended_tests: list[str] = Field(default_factory=list, max_length=8)
+    agent_prompt: str = Field(default="", max_length=3000)
 
     @field_validator(
         "answer",
+        "agent_prompt",
         "flow",
         "possible_change_locations",
         "risks",

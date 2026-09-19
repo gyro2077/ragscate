@@ -53,6 +53,7 @@ class AskResponse(BaseModel):
     risks: list[str]
     recommended_tests: list[str]
     generation: GenerationInfoResponse
+    agent_prompt: str = ""
 
     @model_validator(mode="after")
     def enforce_evidence_contract(self):

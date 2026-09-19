@@ -481,6 +481,7 @@ class AnswerService:
                     list(output.risks),
                     list(output.recommended_tests),
                     generation,
+                    agent_prompt=output.agent_prompt,
                 )
             except LLMProviderError as exc:
                 last_error = str(exc)

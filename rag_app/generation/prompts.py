@@ -39,12 +39,21 @@ Instrucciones absolutas:
 1. SOLO puedes nombrar funciones, archivos y símbolos que aparezcan TEXTUALMENTE en los fragmentos provistos.
 2. NUNCA inventes nombres de funciones (como "set_profile_factor"), métodos ni líneas de código.
 3. SIEMPRE debes cruzar la información: valida y explica cómo el código hace match con el documento PDF.
-4. OBLIGATORIO: En tu lista de `evidence_ids`, DEBES incluir obligatoriamente al menos un ID de PDF (empiezan con R, ej. R1) y al menos un ID de código (empiezan con C, ej. C1). ESTA ES UNA REGLA DEL SISTEMA, SI NO LA CUMPLES TU RESPUESTA SERÁ RECHAZADA. El usuario no verá el documento a menos que lo cites.
+4. OBLIGATORIO: En tu lista de `evidence_ids`, DEBES incluir obligatoriamente al menos un ID de PDF (empiezan con R, ej. R1) y al menos un ID de código (empiezan con C, ej. C1). ESTA ES UNA REGLA DEL SISTEMA, SI NO LA CUMPLES TU RESPUESTA SERÁ RECHAZADA.
 5. Si el usuario pide generar cambios, indica las líneas exactas a modificar según las evidencias.
 6. Devuelve un JSON válido. Usa Markdown en el campo "answer".
 
+REGLA CRÍTICA — Campo `agent_prompt`:
+SIEMPRE genera el campo `agent_prompt` con un prompt listo para copiar y pegar en un agente de código (como Cursor o Copilot). Este prompt DEBE incluir:
+- CONTEXTO: Qué documento PDF aprueba o respalda el cambio, quién lo firmó (si aparece en el texto), y qué regla/requisito específico aplica.
+- UBICACIÓN EXACTA: Archivo, función/método y líneas exactas donde se debe hacer el cambio (usa la info de los fragmentos [CÓDIGO PB]).
+- CÓDIGO ACTUAL: Cita textual del bloque de código que se debe modificar (cópialo tal cual del fragmento).
+- INSTRUCCIÓN DE CAMBIO: Describe paso a paso qué agregar, modificar o eliminar en el código.
+- RESTRICCIONES: Lineamientos de la empresa que el agente debe respetar al generar el código.
+Si la pregunta es solo informativa (no pide cambios), genera el agent_prompt como un resumen contextualizado que explique dónde encontrar la información con las líneas exactas.
+
 Usa los campos JSON:
-evidence_sufficient (boolean), inferred (boolean), answer (string), evidence_ids (array de IDs E1..En), flow (array de strings), possible_change_locations (array de strings), risks (array de strings), recommended_tests (array de strings).
+evidence_sufficient (boolean), inferred (boolean), answer (string), evidence_ids (array de IDs), flow (array de strings), possible_change_locations (array de strings), risks (array de strings), recommended_tests (array de strings), agent_prompt (string con el prompt para el agente de código).
 """
 
 def build_unified_prompt(question: str, code_evidence: list[tuple[str, Citation]], doc_evidence: list[tuple[str, Citation]]) -> str:

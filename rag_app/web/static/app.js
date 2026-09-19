@@ -57,6 +57,16 @@ function renderResult(data) {
         details.append(summary, pre); citations.appendChild(details);
     }
     statusNode.textContent = `${data.citations.length} cita(s) validadas`;
+
+    // Render agent prompt
+    const promptSection = document.querySelector('#agent-prompt-section');
+    const promptText = document.querySelector('#agent-prompt-text');
+    if (data.agent_prompt && data.agent_prompt.trim()) {
+        promptText.textContent = data.agent_prompt;
+        promptSection.classList.remove('hidden');
+    } else {
+        promptSection.classList.add('hidden');
+    }
 }
 
 form.addEventListener('submit', async (event) => {
@@ -80,3 +90,25 @@ form.addEventListener('submit', async (event) => {
 });
 
 loadSnapshots().catch(() => { statusNode.textContent = 'No se pudo leer el índice'; });
+
+// Copy agent prompt to clipboard
+document.querySelector('#btn-copy-prompt').addEventListener('click', async () => {
+    const text = document.querySelector('#agent-prompt-text').textContent;
+    try {
+        await navigator.clipboard.writeText(text);
+        const btn = document.querySelector('#btn-copy-prompt');
+        btn.textContent = '✅ Copiado';
+        setTimeout(() => { btn.textContent = '📋 Copiar'; }, 2000);
+    } catch (err) {
+        // Fallback for non-secure contexts
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        const btn = document.querySelector('#btn-copy-prompt');
+        btn.textContent = '✅ Copiado';
+        setTimeout(() => { btn.textContent = '📋 Copiar'; }, 2000);
+    }
+});

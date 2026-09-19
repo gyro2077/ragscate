@@ -7,6 +7,7 @@ from rag_app.domain.models import Chunk, ParsedSource, Relation, SourceFile
 
 from .datawindow_parser import parse_datawindow
 from .powerscript_parser import parse_powerscript
+from .pdf_rules_parser import parse_signed_business_rules
 
 
 CALL_PATTERN = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
@@ -23,16 +24,29 @@ IGNORED_CALLS = {
 }
 
 
-def parse_all(root: Path, sources: list[SourceFile]) -> tuple[list[SourceFile], list[Chunk], list[Relation]]:
+def parse_all(root: Path, sources: list[SourceFile]) -> tuple[list[SourceFile], list[Chunk], list[Relation], list[Chunk]]:
     parsed: list[ParsedSource] = []
     for source in sources:
         if source.extension == ".srd":
             parsed.append(parse_datawindow(root, source))
+        elif source.extension == ".pdf":
+            parsed.append(parse_signed_business_rules(root, source))
         else:
             parsed.append(parse_powerscript(root, source))
 
     final_sources = [item.source for item in parsed]
-    chunks = [chunk for item in parsed for chunk in item.chunks]
+    
+    # Split chunks: code (PB) vs documents (PDF business rules)
+    code_chunks: list[Chunk] = []
+    doc_chunks: list[Chunk] = []
+    for item in parsed:
+        for chunk in item.chunks:
+            if chunk.object_type == "business_rule":
+                doc_chunks.append(chunk)
+            else:
+                code_chunks.append(chunk)
+    
+    chunks = code_chunks + doc_chunks  # keep all for relation extraction
     relations = [relation for item in parsed for relation in item.relations]
 
     symbol_to_chunk: dict[str, str] = {}
@@ -80,4 +94,4 @@ def parse_all(root: Path, sources: list[SourceFile]) -> tuple[list[SourceFile], 
                 target_chunk_id=symbol_to_chunk.get(target.lower()),
                 evidence_line=line,
             ))
-    return final_sources, chunks, relations
+    return final_sources, chunks, relations, doc_chunks

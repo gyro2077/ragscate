@@ -29,6 +29,7 @@ def _env_bool(name: str, default: bool) -> bool:
 class Settings:
     root: Path = ROOT
     corpus_dir: Path = field(default_factory=lambda: _path_from_env("RAG_CORPUS_DIR", "pb-src"))
+    docs_dir: Path = field(default_factory=lambda: _path_from_env("RAG_DOCS_DIR", "docs-src"))
     data_dir: Path = field(default_factory=lambda: _path_from_env("RAG_DATA_DIR", "rag-data"))
     pbl_name: str = field(default_factory=lambda: os.getenv("RAG_PBL_NAME", "cotizador_mvp.pbl"))
     embed_provider: str = field(default_factory=lambda: os.getenv("RAG_EMBED_PROVIDER", "sentence-transformers"))

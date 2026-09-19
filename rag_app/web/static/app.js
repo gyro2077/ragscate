@@ -3,7 +3,7 @@ const question = document.querySelector('#question');
 const snapshot = document.querySelector('#snapshot');
 const statusNode = document.querySelector('#status');
 const result = document.querySelector('#result');
-const submitButton = form.querySelector('button[type="submit"]');
+const submitButton = form.querySelector('#btn-consultar');
 
 function fillList(id, values) {
   const node = document.querySelector(id); node.innerHTML = '';
@@ -26,36 +26,57 @@ async function loadSnapshots() {
   chip.title = llm.detail;
 }
 
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  statusNode.textContent = 'Recuperando y verificando evidencia…';
-  submitButton.disabled = true;
-  try {
-    const response = await fetch('/api/ask', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({question: question.value, snapshot_id: snapshot.value || null})});
-    const data = await response.json();
-    if (!response.ok) { statusNode.textContent = data.detail || 'Error'; return; }
+function renderResult(data) {
     result.classList.remove('hidden');
-    const badge = document.querySelector('#classification'); badge.textContent = data.classification; badge.dataset.kind = data.classification;
-    document.querySelector('#answer').textContent = data.answer;
+    const badge = document.querySelector('#classification'); 
+    badge.textContent = data.classification; 
+    badge.dataset.kind = data.classification;
+    
+    // Format answer: preserve newlines and ## headings as bold
+    const answerEl = document.querySelector('#answer');
+    answerEl.innerHTML = data.answer
+        .replace(/## (.+)/g, '<strong>$1</strong>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    
     const metric = data.generation.total_duration_ms == null ? '' : ` · ${(data.generation.total_duration_ms / 1000).toFixed(2)} s`;
     const speed = data.generation.tokens_per_second == null ? '' : ` · ${data.generation.tokens_per_second.toFixed(1)} tok/s`;
     document.querySelector('#generation').textContent = `${data.generation.model || 'Sin LLM'} · ${data.generation.detail}${metric}${speed}`;
     document.querySelector('#generation').dataset.status = data.generation.status;
-    fillList('#flow', data.flow); fillList('#changes', data.possible_change_locations); fillList('#risks', data.risks); fillList('#tests', data.recommended_tests);
+    fillList('#flow', data.flow); 
+    fillList('#changes', data.possible_change_locations); 
+    fillList('#risks', data.risks); 
+    fillList('#tests', data.recommended_tests);
     const citations = document.querySelector('#citations'); citations.innerHTML = '';
     for (const c of data.citations) {
-      const details = document.createElement('details');
-      const summary = document.createElement('summary');
-      summary.textContent = `${c.pbl} → ${c.file} → ${c.object} → ${c.member} → líneas ${c.start_line}-${c.end_line} → ${c.snapshot_id}`;
-      const pre = document.createElement('pre'); pre.textContent = c.snippet;
-      details.append(summary, pre); citations.appendChild(details);
+        const details = document.createElement('details'); details.open = true;
+        const summary = document.createElement('summary');
+        const sourceType = c.file.toLowerCase().endsWith('.pdf') ? '📄 [REGLA PDF]' : '💻 [CÓDIGO PB]';
+        summary.textContent = `${sourceType} ${c.pbl} → ${c.file} → ${c.object} → ${c.member} → líneas ${c.start_line}-${c.end_line} → ${c.snapshot_id}`;
+        const pre = document.createElement('pre'); pre.textContent = c.snippet;
+        details.append(summary, pre); citations.appendChild(details);
     }
     statusNode.textContent = `${data.citations.length} cita(s) validadas`;
-  } catch (_error) {
-    statusNode.textContent = 'No se pudo completar la consulta local';
-  } finally {
-    submitButton.disabled = false;
-  }
+}
+
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    statusNode.textContent = 'Recuperando y verificando evidencia…';
+    submitButton.disabled = true;
+    try {
+        const response = await fetch('/api/ask', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({question: question.value, snapshot_id: snapshot.value || null})
+        });
+        const data = await response.json();
+        if (!response.ok) { statusNode.textContent = data.detail || 'Error'; return; }
+        renderResult(data);
+    } catch (_error) {
+        statusNode.textContent = 'No se pudo completar la consulta local';
+    } finally {
+        submitButton.disabled = false;
+    }
 });
 
 loadSnapshots().catch(() => { statusNode.textContent = 'No se pudo leer el índice'; });

@@ -13,7 +13,7 @@ from rag_app.storage.database import chunks_for_snapshot
 
 from .citations import CitationValidator
 from .contracts import GroundedLLMOutput
-from .prompts import SYSTEM_PROMPT, build_user_prompt
+from .prompts import SYSTEM_PROMPT, UNIFIED_SYSTEM_PROMPT, build_unified_prompt
 from .providers import DisabledProvider, GenerationMetrics, LLMProvider, LLMProviderError
 
 
@@ -365,118 +365,134 @@ class AnswerService:
                 [], [], [], [], [],
                 self._not_invoked("No se invocó el LLM porque la pregunta está vacía."),
             )
-        unknown = self.retriever.unknown_identifiers(snapshot_id, question)
-        if unknown:
+
+        # ── ALWAYS DO DUAL RETRIEVAL (PDF + Code) ──────────────────────────
+        # 1. Retrieve code chunks (PB only) — search wide, then filter
+        all_hits = self.retriever.search(snapshot_id, question, top_k=20)
+        code_hits = [h for h in all_hits if h.chunk.object_type != "business_rule"][:5]
+
+        # 2. Retrieve business rule chunks (PDF only) — deduplicate by content
+        doc_hits_raw = self.retriever.search(snapshot_id, question, top_k=8, object_type="business_rule")
+        seen_doc_hashes: set[str] = set()
+        doc_hits = []
+        for h in doc_hits_raw:
+            if h.chunk.raw_sha256 not in seen_doc_hashes:
+                seen_doc_hashes.add(h.chunk.raw_sha256)
+                doc_hits.append(h)
+            if len(doc_hits) >= 4:
+                break
+
+        if not code_hits and not doc_hits:
             return Answer(
                 "No localizado",
-                f"No se encontró evidencia para: {', '.join(unknown)}.",
+                "No se encontró evidencia en el código ni en las reglas de negocio firmadas para esta solicitud.",
                 [], [], [], [], [],
-                self._not_invoked("No se invocó el LLM porque el identificador no existe en el snapshot."),
-            )
-        plan = self._intent(question)
-        if plan is None:
-            return Answer(
-                "No localizado",
-                "No se encontró evidencia suficiente en el snapshot.",
-                [], [], [], [], [],
-                self._not_invoked("La abstención determinista ocurrió antes de invocar el LLM."),
+                self._not_invoked("No se encontró evidencia."),
             )
 
-        citations: list[Citation] = []
-        for member, start, end in plan.members:
-            chunk = self._find_chunk(snapshot_id, member, start, end)
-            if chunk is None:
-                return Answer(
-                    "No localizado",
-                    "No se pudo reconstruir la evidencia requerida.",
-                    [], [], [], [], [],
-                    self._not_invoked("La evidencia requerida no pudo reconstruirse."),
-                )
-            citations.append(self.validator.build(chunk, start, end))
+        # Build citations for both sources
+        code_citations: list[Citation] = []
+        for hit in code_hits:
+            try:
+                code_citations.append(self.validator.build(hit.chunk))
+            except Exception:
+                pass
 
-        if citations and not self.llm.enabled:
-            return Answer(
-                "Comprobado",
-                plan.answer,
-                list(plan.flow),
-                citations,
-                list(plan.changes),
-                list(plan.risks),
-                list(plan.tests),
-                self._not_invoked("Respuesta determinista verificada; generación local deshabilitada."),
-            )
+        doc_citations: list[Citation] = []
+        for hit in doc_hits:
+            try:
+                doc_citations.append(self.validator.build(hit.chunk))
+            except Exception:
+                pass
 
-        if citations and self.llm.enabled:
-            output, _selected, generation = self._generate(
-                question,
-                citations,
-                deterministic_contract=True,
-            )
-            if output is not None:
-                # Para preguntas con contrato determinista, Ollama puede interpretar
-                # la evidencia, pero no reemplazar los hechos ya reconstruidos por el
-                # backend. Esto evita que una paráfrasis del modelo altere fórmulas,
-                # ubicaciones o el flujo que acabamos de validar.
-                return Answer(
-                    "Comprobado",
-                    plan.answer,
-                    list(plan.flow),
-                    citations,
-                    list(plan.changes),
-                    list(plan.risks),
-                    list(plan.tests),
-                    generation,
-                )
+        all_citations = doc_citations + code_citations
+
+        if not self.llm.enabled:
+            files = ", ".join(dict.fromkeys(c.file for c in all_citations))
             return Answer(
                 "Inferido",
-                f"No fue posible generar una explicación local validada. {generation.detail}",
-                [], citations, [],
-                ["La explicación del LLM fue descartada; revise únicamente las evidencias mostradas."],
-                [], generation,
+                f"Se encontró evidencia en: {files}. Active un LLM local para generar la respuesta.",
+                [], all_citations, [], [], [],
+                self._not_invoked("LLM deshabilitado."),
             )
 
-        hits = self.retriever.search(snapshot_id, question, top_k=3)
-        if not hits:
+        fitted_all = self._fit_context(all_citations)
+        if not fitted_all:
             return Answer(
                 "No localizado",
-                "No se encontró evidencia suficiente en el snapshot.",
+                "La evidencia supera el límite de contexto.",
                 [], [], [], [], [],
-                self._not_invoked("No se invocó el LLM porque retrieval no devolvió evidencia."),
+                self._not_invoked("Evidencia excede contexto."),
             )
-        fallback_citations = [self.validator.build(hit.chunk) for hit in hits]
-        if self.llm.enabled:
-            output, selected, generation = self._generate(question, fallback_citations)
-            if output is not None and not output.evidence_sufficient:
-                return Answer(
-                    "No localizado",
-                    output.answer or "La evidencia recuperada no permite responder la pregunta.",
-                    [], [], [], [], [], generation,
+
+        # Build specialized dual-source evidence list ONLY from fitted
+        doc_evidence = []
+        code_evidence = []
+        r_idx = 1
+        c_idx = 1
+        for citation in fitted_all:
+            if citation in doc_citations:
+                doc_evidence.append((f"R{r_idx}", citation))
+                r_idx += 1
+            else:
+                code_evidence.append((f"C{c_idx}", citation))
+                c_idx += 1
+        
+        all_evidence = doc_evidence + code_evidence
+
+        user_prompt = build_unified_prompt(question, code_evidence, doc_evidence)
+        schema = GroundedLLMOutput.model_json_schema()
+        properties = schema["properties"]
+        schema["required"] = list(properties)
+        allowed_ids = [eid for eid, _ in all_evidence]
+        properties["evidence_ids"]["items"] = {"type": "string", "enum": allowed_ids}
+
+        last_error = "El modelo no produjo una salida válida."
+        for attempt in range(1, self.llm_json_retries + 2):
+            retry_note = ""
+            if attempt > 1:
+                retry_note = f"\n\nREINTENTO: {last_error}. Corrige y devuelve JSON válido."
+            try:
+                result = self.llm.generate(UNIFIED_SYSTEM_PROMPT, user_prompt + retry_note, schema)
+                output = GroundedLLMOutput.model_validate_json(result.content)
+                mapping = dict(all_evidence)
+                unknown = set(output.evidence_ids) - set(mapping)
+                if unknown:
+                    raise GroundingError(f"IDs no permitidos: {', '.join(sorted(unknown))}")
+                
+                has_pdf = any(eid.startswith("R") for eid in output.evidence_ids)
+                has_code = any(eid.startswith("C") for eid in output.evidence_ids)
+                if doc_evidence and code_evidence and not (has_pdf and has_code):
+                    raise GroundingError("Regla del Sistema: DEBES citar al menos un ID de Regla PDF (R...) y un ID de Código PB (C...) para cruzar la información.")
+                
+                selected_citations = [mapping[eid] for eid in output.evidence_ids if eid in mapping]
+                generation = self._generation_info(
+                    "generated",
+                    "Respuesta generada cruzando reglas PDF con código PowerBuilder.",
+                    attempt,
+                    result.metrics,
                 )
-            if output is not None:
-                flow, changes, risks, tests = self._requested_sections(question, output)
                 return Answer(
                     "Inferido",
-                    f"Inferencia basada en la evidencia recuperada: {output.answer}",
-                    flow,
-                    selected,
-                    changes,
-                    risks,
-                    tests,
+                    output.answer,
+                    list(output.flow),
+                    selected_citations,
+                    list(output.possible_change_locations),
+                    list(output.risks),
+                    list(output.recommended_tests),
                     generation,
                 )
-            return Answer(
-                "Inferido",
-                f"Ollama no pudo producir una explicación validada. {generation.detail}",
-                [], fallback_citations, [],
-                ["No se aceptó ninguna conclusión del modelo; revise los fragmentos citados."],
-                [], generation,
-            )
+            except LLMProviderError as exc:
+                last_error = str(exc)
+                if exc.code not in {"invalid_response"}:
+                    break
+            except (ValidationError, GroundingError) as exc:
+                last_error = f"Rechazado: {exc}"
 
-        members = ", ".join(dict.fromkeys(citation.member for citation in fallback_citations))
         return Answer(
             "Inferido",
-            f"La búsqueda recuperó evidencia verificable en {members}. La interpretación está deshabilitada; formule una pregunta más específica o active un proveedor LLM local.",
-            [], fallback_citations, [],
-            ["Revise los fragmentos citados antes de realizar cambios."],
-            [], self._not_invoked("Retrieval completado con generación local deshabilitada."),
+            f"No se pudo generar la respuesta completa. {last_error}\n\nEvidencia encontrada — revisa las citas:",
+            [], all_citations, [], [], [],
+            self._generation_info("rejected", last_error, self.llm_json_retries + 1),
         )
+

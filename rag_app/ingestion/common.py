@@ -6,13 +6,15 @@ import unicodedata
 from pathlib import Path
 
 
-SUPPORTED_EXTENSIONS = {".sra", ".srw", ".sru", ".srs", ".srd"}
+SUPPORTED_EXTENSIONS = {".sra", ".srw", ".sru", ".srs", ".srd", ".md", ".pdf"}
 TYPE_BY_EXTENSION = {
     ".sra": "application",
     ".srw": "window",
     ".sru": "userobject",
     ".srs": "structure",
     ".srd": "datawindow",
+    ".md": "document",
+    ".pdf": "business_rule",
 }
 
 
@@ -33,12 +35,20 @@ def normalize_text(value: str) -> str:
 
 def read_source(path: Path) -> tuple[bytes, str, list[str], str, str]:
     raw = path.read_bytes()
+    
+    if path.suffix.lower() == ".pdf":
+        return raw, "", [], "binary", "none"
+        
     try:
         text = raw.decode("ascii")
         encoding = "ascii"
     except UnicodeDecodeError:
-        text = raw.decode("utf-8")
-        encoding = "utf-8"
+        try:
+            text = raw.decode("utf-8")
+            encoding = "utf-8"
+        except UnicodeDecodeError:
+            text = raw.decode("latin1")
+            encoding = "latin1"
     if b"\r\n" in raw:
         line_ending = "CRLF"
     elif b"\n" in raw:

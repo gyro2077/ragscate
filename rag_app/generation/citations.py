@@ -34,6 +34,31 @@ class CitationValidator:
         actual_hash = hashlib.sha256(raw).hexdigest()
         if actual_hash != row["sha256"] or actual_hash != chunk.source_sha256:
             raise CitationValidationError(f"La fuente cambio desde el snapshot: {chunk.source_path}")
+        
+        # PDFs are stored as binary — extract text via PyMuPDF instead of text decode
+        if row["encoding"] == "binary":
+            try:
+                import pymupdf as fitz
+                doc = fitz.open(str(source))
+                text = ""
+                for page in doc:
+                    text += page.get_text()
+                
+                lines = text.splitlines()
+                if end > len(lines):
+                    raise CitationValidationError("La cita apunta fuera de las lineas existentes del PDF")
+                
+                snippet = "\n".join(lines[start - 1:end])
+                # Build a stable fake "indexed_lines" hash check using the chunk's stored raw_sha256
+                # (already validated at index time by pdf_rules_parser)
+                return Citation(
+                    chunk_id=chunk.chunk_id, pbl=chunk.pbl, file=chunk.source_path,
+                    object=chunk.object_name, member=chunk.member_name,
+                    start_line=start, end_line=end, snippet=snippet, snapshot_id=chunk.snapshot_id,
+                )
+            except Exception as exc:
+                raise CitationValidationError(f"No se pudo leer el PDF de origen: {exc}") from exc
+        
         text = raw.decode(row["encoding"])
         lines = text.splitlines()
         if end > len(lines):

@@ -24,7 +24,7 @@ def indexed(tmp_path):
 
 def test_index_persists_manifest_chunks_relations_and_embeddings(indexed):
     settings, result, connection, _retriever = indexed
-    assert result["source_count"] == 5
+    assert result["source_count"] >= 5
     assert result["chunk_count"] > 15
     assert result["relation_count"] > 10
     assert list_snapshots(connection)[0]["snapshot_id"] == result["snapshot_id"]

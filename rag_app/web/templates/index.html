@@ -13,9 +13,15 @@
       <div class="title-row"><h1>RAG<span>scate</span></h1><div id="llm-chip" class="runtime-chip">Comprobando Ollama…</div></div>
       <p>Respuestas en español respaldadas por líneas reconstruibles del snapshot.</p>
     </header>
+
     <form id="ask-form">
-      <label for="question">Pregunta sobre el código</label>
-      <div class="ask-row"><textarea id="question" rows="3" required placeholder="¿Dónde se calcula la prima anual?"></textarea><button type="submit">Consultar</button></div>
+      <label for="question">Interacción con el Código y Documentos</label>
+      <div class="ask-row">
+        <textarea id="question" rows="3" required placeholder="¿Qué cambios debo hacer en el código según las reglas de negocio, o dónde se calcula la prima anual?"></textarea>
+        <div class="action-col">
+          <button type="submit" id="btn-consultar">Consultar (Auto-Match)</button>
+        </div>
+      </div>
       <div class="meta"><label for="snapshot">Snapshot</label><select id="snapshot"></select><span id="status">Cargando índice…</span></div>
     </form>
     <section id="result" class="result hidden" aria-live="polite">

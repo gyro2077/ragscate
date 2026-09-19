@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from contextlib import asynccontextmanager
 from pathlib import Path
+import shutil
+import threading
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -17,6 +20,7 @@ from rag_app.indexer import create_encoder, index_corpus
 from rag_app.retrieval.hybrid import HybridRetriever
 from rag_app.retrieval.semantic import SemanticEncoder
 from rag_app.storage.database import connect, latest_snapshot_id, list_snapshots
+from rag_app.ingestion.validators import is_pdf_signed
 
 from .schemas import AskRequest, AskResponse, SearchHitResponse, SearchRequest
 
@@ -26,7 +30,19 @@ WEB_ROOT = Path(__file__).resolve().parents[1] / "web"
 
 def create_app(settings: Settings | None = None, encoder: SemanticEncoder | None = None, llm=None) -> FastAPI:
     settings = settings or get_settings()
-    app = FastAPI(title="RAGscate", version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Startup: auto-ingest signed PDFs found in reglas-del-negocio-pdf
+        docs_dir = settings.root / "reglas-del-negocio-pdf"
+        if docs_dir.exists():
+            signed_pdfs = [p for p in docs_dir.glob("*.pdf") if is_pdf_signed(p)]
+            if signed_pdfs:
+                print(f"\n🔄 Auto-ingesta: {len(signed_pdfs)} PDFs firmados detectados en {docs_dir.name}. Indexando en background...\n")
+                threading.Thread(target=index_corpus, args=(settings, app.state.encoder), daemon=True).start()
+        yield  # server runs here
+
+    app = FastAPI(title="RAGscate", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.encoder = encoder
     app.state.llm = llm
@@ -79,6 +95,28 @@ def create_app(settings: Settings | None = None, encoder: SemanticEncoder | None
             "llm_provider": settings.llm_provider,
             "llm": provider_health,
         }
+
+    @app.post("/api/documents")
+    def upload_document(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+        if not file.filename.lower().endswith(".pdf"):
+            raise HTTPException(400, "Solo se admiten documentos oficiales en formato PDF.")
+            
+        temp_path = Path(f"/tmp/{file.filename}")
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        if not is_pdf_signed(temp_path):
+            temp_path.unlink()
+            raise HTTPException(400, "RECHAZADO: El documento no cuenta con una firma electrónica válida. Por políticas de Seguros de Gyro, no se puede ingerir ni procesar.")
+            
+        docs_dir = settings.root / settings.corpus_dir / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        final_path = docs_dir / file.filename
+        shutil.move(temp_path, final_path)
+        
+        # Trigger reindex
+        background_tasks.add_task(index_corpus, settings, app.state.encoder)
+        return {"status": "ok", "message": f"Documento '{file.filename}' validado (Firma OK) e ingerido. Reindexando en segundo plano..."}
 
     @app.get("/api/snapshots")
     def snapshots():

@@ -4,7 +4,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from rag_app.domain.models import Chunk, Relation, SourceFile
+from rag_app.domain.models import Chunk, CodeDocMatch, DocumentChunk, Relation, SourceFile
 
 
 SCHEMA = """
@@ -76,6 +76,45 @@ CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
     normalized_text,
     tokenize='unicode61 remove_diacritics 2'
 );
+CREATE TABLE IF NOT EXISTS doc_chunks (
+    chunk_id TEXT PRIMARY KEY,
+    snapshot_id TEXT NOT NULL,
+    source_path TEXT NOT NULL,
+    doc_type TEXT NOT NULL,
+    doc_id TEXT NOT NULL,
+    doc_title TEXT NOT NULL,
+    approval_status TEXT NOT NULL,
+    section_title TEXT NOT NULL,
+    section_level INTEGER NOT NULL,
+    start_line INTEGER NOT NULL,
+    end_line INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    normalized_text TEXT NOT NULL,
+    keywords_json TEXT NOT NULL,
+    raw_sha256 TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_doc_snapshot ON doc_chunks(snapshot_id);
+CREATE INDEX IF NOT EXISTS idx_doc_approved ON doc_chunks(snapshot_id, approval_status);
+CREATE VIRTUAL TABLE IF NOT EXISTS doc_chunks_fts USING fts5(
+    chunk_id UNINDEXED,
+    snapshot_id UNINDEXED,
+    doc_id,
+    section_title,
+    keywords,
+    normalized_text,
+    tokenize='unicode61 remove_diacritics 2'
+);
+CREATE TABLE IF NOT EXISTS code_doc_matches (
+    match_id TEXT PRIMARY KEY,
+    snapshot_id TEXT NOT NULL,
+    code_chunk_id TEXT NOT NULL,
+    doc_chunk_id TEXT NOT NULL,
+    match_type TEXT NOT NULL,
+    confidence REAL NOT NULL,
+    evidence TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_match_code ON code_doc_matches(snapshot_id, code_chunk_id);
+CREATE INDEX IF NOT EXISTS idx_match_doc ON code_doc_matches(snapshot_id, doc_chunk_id);
 """
 
 
@@ -159,3 +198,86 @@ def get_chunk(connection: sqlite3.Connection, chunk_id: str) -> Chunk | None:
 
 def chunks_for_snapshot(connection: sqlite3.Connection, snapshot_id: str) -> list[Chunk]:
     return [chunk_from_row(row) for row in connection.execute("SELECT * FROM chunks WHERE snapshot_id = ? ORDER BY source_path,start_line", (snapshot_id,))]
+
+
+def doc_chunk_from_row(row: sqlite3.Row) -> DocumentChunk:
+    return DocumentChunk(
+        chunk_id=row["chunk_id"], snapshot_id=row["snapshot_id"],
+        source_path=row["source_path"], doc_type=row["doc_type"],
+        doc_id=row["doc_id"], doc_title=row["doc_title"],
+        approval_status=row["approval_status"], section_title=row["section_title"],
+        section_level=row["section_level"], start_line=row["start_line"],
+        end_line=row["end_line"], text=row["text"],
+        normalized_text=row["normalized_text"],
+        keywords=tuple(json.loads(row["keywords_json"])),
+        raw_sha256=row["raw_sha256"],
+    )
+
+
+def replace_doc_chunks(
+    connection: sqlite3.Connection,
+    snapshot_id: str,
+    doc_chunks: list[DocumentChunk],
+) -> None:
+    with connection:
+        connection.execute("DELETE FROM doc_chunks_fts WHERE snapshot_id = ?", (snapshot_id,))
+        connection.execute("DELETE FROM doc_chunks WHERE snapshot_id = ?", (snapshot_id,))
+        connection.executemany(
+            """INSERT INTO doc_chunks VALUES (
+            :chunk_id,:snapshot_id,:source_path,:doc_type,:doc_id,:doc_title,
+            :approval_status,:section_title,:section_level,:start_line,:end_line,
+            :text,:normalized_text,:keywords_json,:raw_sha256)""",
+            [{**dc.to_dict(), "keywords_json": json.dumps(dc.keywords, ensure_ascii=False)} for dc in doc_chunks],
+        )
+        connection.executemany(
+            "INSERT INTO doc_chunks_fts VALUES (?, ?, ?, ?, ?, ?)",
+            [(dc.chunk_id, dc.snapshot_id, dc.doc_id, dc.section_title,
+              " ".join(dc.keywords), dc.normalized_text) for dc in doc_chunks],
+        )
+
+
+def replace_matches(
+    connection: sqlite3.Connection,
+    snapshot_id: str,
+    matches: list[CodeDocMatch],
+) -> None:
+    with connection:
+        connection.execute("DELETE FROM code_doc_matches WHERE snapshot_id = ?", (snapshot_id,))
+        connection.executemany(
+            """INSERT INTO code_doc_matches VALUES (
+            :match_id,:snapshot_id,:code_chunk_id,:doc_chunk_id,
+            :match_type,:confidence,:evidence)""",
+            [m.to_dict() for m in matches],
+        )
+
+
+def approved_doc_chunks(connection: sqlite3.Connection, snapshot_id: str) -> list[DocumentChunk]:
+    rows = connection.execute(
+        "SELECT * FROM doc_chunks WHERE snapshot_id = ? AND approval_status = 'approved' ORDER BY source_path, start_line",
+        (snapshot_id,),
+    ).fetchall()
+    return [doc_chunk_from_row(row) for row in rows]
+
+
+def all_doc_chunks(connection: sqlite3.Connection, snapshot_id: str) -> list[DocumentChunk]:
+    rows = connection.execute(
+        "SELECT * FROM doc_chunks WHERE snapshot_id = ? ORDER BY source_path, start_line",
+        (snapshot_id,),
+    ).fetchall()
+    return [doc_chunk_from_row(row) for row in rows]
+
+
+def matches_for_code(connection: sqlite3.Connection, snapshot_id: str, code_chunk_id: str) -> list[CodeDocMatch]:
+    rows = connection.execute(
+        "SELECT * FROM code_doc_matches WHERE snapshot_id = ? AND code_chunk_id = ? ORDER BY confidence DESC",
+        (snapshot_id, code_chunk_id),
+    ).fetchall()
+    return [CodeDocMatch(**dict(row)) for row in rows]
+
+
+def matches_for_snapshot(connection: sqlite3.Connection, snapshot_id: str) -> list[CodeDocMatch]:
+    rows = connection.execute(
+        "SELECT * FROM code_doc_matches WHERE snapshot_id = ? ORDER BY confidence DESC",
+        (snapshot_id,),
+    ).fetchall()
+    return [CodeDocMatch(**dict(row)) for row in rows]

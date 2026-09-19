@@ -55,10 +55,16 @@ class SentenceTransformerEncoder:
     def __init__(self, model_name: str, device: str = "cpu") -> None:
         if not model_name:
             raise ValueError("Configure RAG_EMBED_MODEL para usar Sentence Transformers")
+        import os
         from sentence_transformers import SentenceTransformer
 
         self.model_name = model_name
-        self._model = SentenceTransformer(model_name, device=device)
+        local_files_only = os.getenv("HF_HUB_OFFLINE", "0").strip().lower() in {"1", "true", "yes"}
+        self._model = SentenceTransformer(
+            model_name,
+            device=device,
+            local_files_only=local_files_only,
+        )
 
     def encode_documents(self, texts: Sequence[str]) -> np.ndarray:
         method = getattr(self._model, "encode_document", self._model.encode)

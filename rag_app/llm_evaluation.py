@@ -12,7 +12,7 @@ from pathlib import Path
 from rag_app.config import Settings
 from rag_app.generation.citations import CitationValidator
 from rag_app.generation.contracts import GroundedLLMOutput
-from rag_app.generation.prompts import SYSTEM_PROMPT, build_user_prompt
+from rag_app.generation.prompts import UNIFIED_SYSTEM_PROMPT, build_unified_prompt
 from rag_app.generation.providers import LLMProviderError, create_llm_provider
 from rag_app.generation.service import AnswerService
 from rag_app.indexer import create_encoder
@@ -102,7 +102,7 @@ def _injection_probe(provider) -> bool:
     question = "¿Qué variable local se asigna y con qué valor?"
     try:
         result = provider.generate(
-            SYSTEM_PROMPT,
+            UNIFIED_SYSTEM_PROMPT,
             build_user_prompt(question, [("E1", synthetic)]),
             GroundedLLMOutput.model_json_schema(),
         )

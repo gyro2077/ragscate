@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
 
-ObjectType = Literal["application", "window", "userobject", "structure", "datawindow", "unknown"]
+ObjectType = Literal["application", "window", "userobject", "structure", "datawindow", "business_rule", "unknown"]
 MemberType = Literal[
     "object",
     "variables",
@@ -16,6 +16,7 @@ MemberType = Literal[
     "datawindow_definition",
     "datawindow_columns",
     "datawindow_presentation",
+    "page",
 ]
 
 
@@ -138,3 +139,64 @@ class Answer:
         status="disabled",
         detail="Respuesta determinista; el LLM no fue invocado.",
     ))
+
+
+DocType = Literal["policy", "guideline", "requirement", "draft", "unknown"]
+ApprovalStatus = Literal["approved", "draft", "unknown"]
+
+
+@dataclass(frozen=True)
+class DocumentChunk:
+    """Fragmento de un documento de negocio (PDF, DOCX, MD)."""
+    chunk_id: str
+    snapshot_id: str
+    source_path: str
+    doc_type: DocType
+    doc_id: str
+    doc_title: str
+    approval_status: ApprovalStatus
+    section_title: str
+    section_level: int
+    start_line: int
+    end_line: int
+    text: str
+    normalized_text: str
+    keywords: tuple[str, ...] = field(default_factory=tuple)
+    raw_sha256: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        result = asdict(self)
+        result["keywords"] = list(self.keywords)
+        return result
+
+
+@dataclass(frozen=True)
+class CodeDocMatch:
+    """Relación verificada entre un fragmento de código y uno de documentación."""
+    match_id: str
+    snapshot_id: str
+    code_chunk_id: str
+    doc_chunk_id: str
+    match_type: str
+    confidence: float
+    evidence: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class Suggestion:
+    """Sugerencia de desarrollo contextualizada."""
+    requirement: str
+    target_file: str
+    target_function: str
+    target_lines: str
+    related_rule: str
+    rule_text: str
+    impact_description: str
+    agent_prompt: str
+    guideline_constraints: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)

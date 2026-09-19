@@ -21,7 +21,7 @@ def create_encoder(settings: Settings, testing: bool = False) -> SemanticEncoder
 
 def index_corpus(settings: Settings, encoder: SemanticEncoder | None = None) -> dict[str, object]:
     snapshot_id, initial_sources = build_manifest(settings.root, settings.corpus_dir, settings.pbl_name)
-    sources, chunks, relations = parse_all(settings.root, initial_sources)
+    sources, chunks, relations, doc_chunks = parse_all(settings.root, initial_sources)
     encoder = encoder or create_encoder(settings)
     snapshot_dir = settings.data_dir / "snapshots" / snapshot_id
     snapshot_dir.mkdir(parents=True, exist_ok=True)

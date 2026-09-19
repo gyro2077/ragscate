@@ -11,7 +11,7 @@ from rag_app.ingestion.manifest import build_manifest
 
 def _parsed():
     snapshot, sources = build_manifest(ROOT, ROOT / "pb-src", "cotizador_mvp.pbl")
-    final_sources, chunks, relations = parse_all(ROOT, sources)
+    final_sources, chunks, relations, doc_chunks = parse_all(ROOT, sources)
     return snapshot, final_sources, chunks, relations
 
 
@@ -19,13 +19,18 @@ def test_manifest_discovers_five_sources_and_is_stable():
     first, sources, _chunks, _relations = _parsed()
     second, _ = build_manifest(ROOT, ROOT / "pb-src", "cotizador_mvp.pbl")
     assert first == second
-    assert len(sources) == 5
-    assert {source.object_type for source in sources} == {"application", "window", "userobject", "structure", "datawindow"}
+    # 5 PB source files + 2 signed PDFs = 7 (the unsigned borrador is rejected and not counted)
+    pb_sources = [s for s in sources if s.extension != ".pdf"]
+    assert len(pb_sources) == 5
+    assert {source.object_type for source in pb_sources} == {"application", "window", "userobject", "structure", "datawindow"}
 
 
 def test_every_chunk_reconstructs_exact_lines_and_hash():
     _snapshot, _sources, chunks, _relations = _parsed()
     for chunk in chunks:
+        # PDF/business_rule chunks use page-based extraction, not raw-line reconstruction
+        if chunk.object_type == "business_rule":
+            continue
         lines = (ROOT / chunk.source_path).read_bytes().decode("ascii").splitlines()
         reconstructed = "\n".join(lines[chunk.start_line - 1:chunk.end_line])
         assert reconstructed == chunk.text

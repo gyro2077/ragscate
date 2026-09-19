@@ -20,7 +20,8 @@ def git_commit(root: Path) -> str:
 
 
 def build_manifest(root: Path, corpus_dir: Path, pbl_name: str) -> tuple[str, list[SourceFile]]:
-    paths = discover_sources(corpus_dir)
+    pdf_dir = root / "reglas-del-negocio-pdf"
+    paths = discover_sources(corpus_dir, pdf_dir)
     if not paths:
         raise ValueError(f"No se encontraron fuentes SR* en {corpus_dir}")
     commit = git_commit(root)

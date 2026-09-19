@@ -69,6 +69,16 @@ function renderResult(data) {
     }
 }
 
+// Add keyboard shortcut for Enter to submit, Shift+Enter for new line
+question.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!submitButton.disabled && question.value.trim() !== '') {
+            form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+    }
+});
+
 form.addEventListener('submit', async (event) => {
     event.preventDefault();
     statusNode.textContent = 'Recuperando y verificando evidencia…';

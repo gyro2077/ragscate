@@ -10,7 +10,9 @@ h1 { font-size:3rem; margin:0; letter-spacing:-.05em; } h1 span { color:var(--br
 form,.result { background:white; border:1px solid var(--line); border-radius:16px; padding:24px; box-shadow:0 12px 35px #17202a0b; }
 label,h2 { font-weight:700; } h2 { font-size:.85rem; text-transform:uppercase; letter-spacing:.05em; margin-top:24px; }
 .ask-row { display:flex; gap:12px; margin-top:10px; } textarea { flex:1; resize:vertical; border:1px solid var(--line); border-radius:10px; padding:14px; font:inherit; }
-button { border:0; border-radius:10px; padding:0 24px; color:white; background:var(--brand); font-weight:700; cursor:pointer; }
+button { border:0; border-radius:10px; padding:16px 32px; font-size:1.05rem; color:white; background:var(--brand); font-weight:700; cursor:pointer; min-width:200px; transition: all 0.2s; }
+button:hover:not(:disabled) { background: #085247; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,107,93,0.2); }
+button:active:not(:disabled) { transform: translateY(0); }
 button:disabled { opacity:.55; cursor:wait; }
 .meta { display:flex; align-items:center; gap:10px; margin-top:14px; color:var(--muted); font-size:.85rem; } select { max-width:300px; padding:6px; }
 .result { margin-top:20px; } .hidden { display:none; } .result-head { display:flex; align-items:flex-start; gap:14px; font-size:1.05rem; line-height:1.55; }
@@ -65,6 +67,7 @@ pre { margin:0; padding:15px; background:#111827; color:#e5e7eb; overflow:auto; 
   display: flex;
   flex-direction: column;
   gap: 8px;
+  justify-content: center;
 }
 .btn-secondary {
   background-color: #f1f5f9;
@@ -129,4 +132,47 @@ pre { margin:0; padding:15px; background:#111827; color:#e5e7eb; overflow:auto; 
   max-height: 500px;
   overflow-y: auto;
   margin: 0;
+}
+.result-layout {
+  display: flex;
+  gap: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+.left-col {
+  flex: 1;
+  min-width: 0; /* Prevent flex overflow */
+}
+.right-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.scrollable-citations {
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+.scrollable-citations::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollable-citations::-webkit-scrollbar-thumb {
+  background-color: var(--line);
+  border-radius: 4px;
+}
+.grid-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.grid-vertical section h2 {
+  margin-top: 0;
+}
+@media (max-width: 900px) {
+  .result-layout {
+    flex-direction: column;
+  }
 }
